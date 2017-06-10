@@ -17,7 +17,6 @@ namespace Orleans.Providers.RabbitMQ.Streams
         private readonly HashRingBasedStreamQueueMapper _streamQueueMapper;
         private readonly RabbitMQStreamProviderConfiguration _configuration;
         private readonly Logger _logger;
-        private readonly IConnection _connection;
         protected readonly ConcurrentDictionary<QueueId, RabbitMQMessageQueueDataManager> Queues = new ConcurrentDictionary<QueueId, RabbitMQMessageQueueDataManager>();
         public string Name { get; }
         public bool IsRewindable => false;
@@ -36,9 +35,6 @@ namespace Orleans.Providers.RabbitMQ.Streams
             _configuration = configuration;
             _logger = logger;
             Name = providerName;
-            var connectionFactory = configuration.ToConnectionFactory();
-            _connection =  connectionFactory.CreateConnection($"{Name}_Consumer");
-
         }
 
         public async Task QueueMessageBatchAsync<T>(Guid streamGuid, string streamNamespace, IEnumerable<T> events, StreamSequenceToken token,
@@ -48,7 +44,7 @@ namespace Orleans.Providers.RabbitMQ.Streams
             RabbitMQMessageQueueDataManager queue;
             if (!Queues.TryGetValue(queueId, out queue))
             {
-                var tmpQueue = new RabbitMQMessageQueueDataManager(_configuration, _connection, _logger);
+                var tmpQueue = new RabbitMQMessageQueueDataManager(_configuration, $"{Name}_Producer", _logger);
                 await tmpQueue.InitQueueAsync();
                 queue = Queues.GetOrAdd(queueId, tmpQueue);
             }
@@ -58,8 +54,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
 
         public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
         {
-            return RabbitMQAdapterReceiver.Create(_configuration, _serializationManager, queueId,
-                _dataAdapter, _connection, _logger);
+            return RabbitMQAdapterReceiver.Create(_configuration, Name,_serializationManager, queueId,
+                _dataAdapter, _logger);
         }
 
         

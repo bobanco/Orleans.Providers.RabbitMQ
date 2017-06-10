@@ -1,11 +1,9 @@
-﻿using System;
+﻿using Orleans.Runtime;
+using RabbitMQ.Client;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Orleans.Runtime;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Framing.Impl;
 
 namespace Orleans.Providers.RabbitMQ.Streams
 {
@@ -16,13 +14,13 @@ namespace Orleans.Providers.RabbitMQ.Streams
         private readonly IConnection _connection;
         private readonly IModel _channel;
         private readonly IBasicProperties _props;
-        
-        
 
-        public RabbitMQMessageQueueDataManager(RabbitMQStreamProviderConfiguration configuration, IConnection connection, Logger logger)
+        public RabbitMQMessageQueueDataManager(RabbitMQStreamProviderConfiguration configuration, string connectionName,
+            Logger logger)
         {
             _configuration = configuration;
-            _connection = connection;
+            var connectionFactory = configuration.ToConnectionFactory();
+            _connection = connectionFactory.CreateConnection($"{connectionName}");
             _logger = logger;
             _channel = _connection.CreateModel();
             _props = GetBasicParameters();
@@ -54,6 +52,37 @@ namespace Orleans.Providers.RabbitMQ.Streams
             finally
             {
                 CheckAlertSlowAccess(startTime, "InitQueueAsync");
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task CloseQueueAsync()
+        {
+            var startTime = DateTime.UtcNow;
+            try
+            {
+
+                if (_channel.IsOpen)
+                {
+                    _logger.Info(100000,"Closing RabbitMQ queue channel..");
+                    _channel.Close(200, "Good Bye!");
+                    _logger.Info(100000,"RabbitMQ queue channel has been clsoed!");
+                }
+                if (_connection.IsOpen)
+                {
+                    _logger.Info(100000,"Closing RabbitMQ queue connection");
+                    _connection.Close(200, "Good Bye!",1000);
+                    _logger.Info(100000,"RabbitMQ queue connection has been closed!");
+                }
+                    
+            }
+            catch (Exception e)
+            {
+                ReportErrorAndRethrow(e, "CloseQueueAsync");
+            }
+            finally
+            {
+                CheckAlertSlowAccess(startTime, "CloseQueueAsync");
             }
             return Task.CompletedTask;
         }

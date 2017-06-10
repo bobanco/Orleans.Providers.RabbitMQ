@@ -14,8 +14,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
     /// </summary>
     internal class RabbitMQAdapterReceiver : IQueueAdapterReceiver
     {
-       
         private readonly RabbitMQStreamProviderConfiguration _configuration;
+        private readonly string _providerName;
         private readonly SerializationManager _serializationManager;
         private RabbitMQMessageQueueDataManager _queue;
         private readonly IRabbitMQDataAdapter _dataAdapter;
@@ -27,22 +27,22 @@ namespace Orleans.Providers.RabbitMQ.Streams
 
         public QueueId Id { get; }
 
-        public static RabbitMQAdapterReceiver Create(RabbitMQStreamProviderConfiguration configuration,
-            SerializationManager serializationManager, QueueId queueId, IRabbitMQDataAdapter dataAdapter, IConnection connection, Logger logger)
+        public static RabbitMQAdapterReceiver Create(RabbitMQStreamProviderConfiguration configuration,string providerName,
+            SerializationManager serializationManager, QueueId queueId, IRabbitMQDataAdapter dataAdapter, Logger logger)
         {
             if(configuration==null)throw new ArgumentNullException(nameof(configuration));
             if (queueId == null) throw new ArgumentNullException(nameof(queueId));
             if (dataAdapter == null) throw new ArgumentNullException(nameof(dataAdapter));
             if (serializationManager == null) throw new ArgumentNullException(nameof(serializationManager));
-            if(connection==null) throw new ArgumentNullException(nameof(connection));
             if(logger == null) throw new ArgumentNullException(nameof(logger));
-            var queue = new RabbitMQMessageQueueDataManager(configuration, connection, logger);
-            return new RabbitMQAdapterReceiver(configuration, serializationManager, queueId, queue, dataAdapter, logger);
+            var queue = new RabbitMQMessageQueueDataManager(configuration, $"{providerName}_Consumer", logger);
+            return new RabbitMQAdapterReceiver(configuration, providerName, serializationManager, queueId, queue, dataAdapter, logger);
         }
 
-        public RabbitMQAdapterReceiver(RabbitMQStreamProviderConfiguration configuration, SerializationManager serializationManager, QueueId queueId, RabbitMQMessageQueueDataManager queue, IRabbitMQDataAdapter dataAdapter, Logger logger)
+        public RabbitMQAdapterReceiver(RabbitMQStreamProviderConfiguration configuration, string providerName,SerializationManager serializationManager, QueueId queueId,  RabbitMQMessageQueueDataManager queue, IRabbitMQDataAdapter dataAdapter, Logger logger)
         {
             _configuration = configuration;
+            _providerName = providerName;
             _serializationManager = serializationManager;
             _queue = queue;
             _dataAdapter = dataAdapter;
@@ -134,6 +134,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
             {
                 if (_outstandingTask != null) // await the last storage operation, so after we shutdown and stop this receiver we don't get async operation completions from pending storage operations.
                     await _outstandingTask;
+                if (_queue != null)
+                    await _queue.CloseQueueAsync();
             }
             finally
             {

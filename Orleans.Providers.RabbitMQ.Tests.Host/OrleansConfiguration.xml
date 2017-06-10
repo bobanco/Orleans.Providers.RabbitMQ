@@ -7,7 +7,7 @@
     </StorageProviders>
     <StreamProviders>
       <Provider Type="Orleans.Providers.RabbitMQ.Streams.RabbitMQStreamProvider" Name="Default" DeploymentId="test-deployement"
-                Uri="amqp://guest:guest@localhost:5672" Exchange="exchange" Queue="queue" RoutingKey="#" />
+                DataConnectionString="amqp://guest:guest@localhost:5672" Exchange="exchange" Queue="queue" RoutingKey="#"  NumQueues="1"/>
     </StreamProviders>
     <BootstrapProviders>
       <Provider Type="Orleans.Providers.RabbitMQ.Tests.Host.Bootsrap.RabbitMQTestBootstrap" Name="BootstrapProvider" />

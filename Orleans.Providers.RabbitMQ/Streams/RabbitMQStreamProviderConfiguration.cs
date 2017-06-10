@@ -15,7 +15,7 @@ namespace Orleans.Providers.RabbitMQ.Streams
         public string Queue { get; }
         public bool QueueDurable { get; }
         public string RoutingKey { get; }
-        public string Uri { get; }
+        public string DataConnectionString { get; }
 
         public TimeSpan QueueOperationTimeout { get; }
 
@@ -34,15 +34,15 @@ namespace Orleans.Providers.RabbitMQ.Streams
             QueueDurable = config.GetBoolProperty("QueueDurable", false);
             RoutingKey = config.Properties["RoutingKey"];
             QueueOperationTimeout = config.GetTimeSpanProperty("QueueOperationTimeout", TimeSpan.FromSeconds(15));
-            Uri = config.GetProperty("Uri", null);
+            DataConnectionString = config.GetProperty("DataConnectionString", null);
         }
 
         public IConnectionFactory ToConnectionFactory()
         {
             var factory = new ConnectionFactory();
-            if (!string.IsNullOrWhiteSpace(Uri))
+            if (!string.IsNullOrWhiteSpace(DataConnectionString))
             {
-                factory.Uri = Uri;
+                factory.Uri = DataConnectionString;
                 return factory;
             }
             factory.AutomaticRecoveryEnabled = true;//enable auto receonnect
