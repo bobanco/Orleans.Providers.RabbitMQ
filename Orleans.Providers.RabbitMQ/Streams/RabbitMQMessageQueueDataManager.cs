@@ -11,17 +11,19 @@ namespace Orleans.Providers.RabbitMQ.Streams
     {
         private readonly Logger _logger;
         private readonly RabbitMQStreamProviderConfiguration _configuration;
-        private readonly IConnection _connection;
-        private readonly IModel _channel;
+        private readonly string _connectionName;
+        private IConnection _connection;
+        private IModel _channel;
         private readonly IBasicProperties _props;
 
         public RabbitMQMessageQueueDataManager(RabbitMQStreamProviderConfiguration configuration, string connectionName,
             Logger logger)
         {
             _configuration = configuration;
+            _connectionName = connectionName;
+            _logger = logger;
             var connectionFactory = configuration.ToConnectionFactory();
             _connection = connectionFactory.CreateConnection($"{connectionName}");
-            _logger = logger;
             _channel = _connection.CreateModel();
             _props = GetBasicParameters();
         }
@@ -114,8 +116,15 @@ namespace Orleans.Providers.RabbitMQ.Streams
             var startTime = DateTime.UtcNow;
             try
             {
-                await Task.Run(() => _channel.BasicPublish(_configuration.Exchange, _configuration.RoutingKey, _props,
-                    message.Body));
+                await Task.Run(() =>
+                {
+                    if (!IsConnected())
+                    {
+                        Connect();
+                    }
+                    _channel.BasicPublish(_configuration.Exchange, _configuration.RoutingKey, _props,
+                        message.Body);
+                });
             }
             catch (Exception exc)
             {
@@ -141,6 +150,10 @@ namespace Orleans.Providers.RabbitMQ.Streams
                     var i = count;
                     while (i > 0 || i == -1)
                     {
+                        if (!IsConnected())
+                        {
+                            Connect();
+                        }
                         var result = _channel.BasicGet(_configuration.Queue, false);
                         if (result == null)
                             break;
@@ -187,6 +200,26 @@ namespace Orleans.Providers.RabbitMQ.Streams
             }
         }
 
+        private bool IsConnected() => _connection != null && _connection.IsOpen && _channel != null && _channel.IsOpen;
+
+        private void Connect()
+        {
+            if (_connection == null || !_connection.IsOpen)
+            {
+                _connection?.Dispose();
+                var connectionFactory = _configuration.ToConnectionFactory();
+                _connection = connectionFactory.CreateConnection($"{_connectionName}");
+            }
+            if (_channel == null || !_channel.IsOpen)
+            {
+                _channel?.Dispose();
+                _channel = _connection.CreateModel();
+                _channel.ExchangeDeclare(_configuration.Exchange, _configuration.ExchangeType, _configuration.ExchangeDurable, _configuration.AutoDelete, null);
+                _channel.QueueDeclare(_configuration.Queue, _configuration.QueueDurable, false, false, null);
+                _channel.QueueBind(_configuration.Queue, _configuration.Exchange, _configuration.RoutingKey, null);
+            }
+            
+        }
 
         private void CheckAlertSlowAccess(DateTime startOperation, string operation)
         {

@@ -45,8 +45,6 @@ namespace Orleans.Providers.RabbitMQ.Streams
                 factory.Uri = DataConnectionString;
                 return factory;
             }
-            factory.AutomaticRecoveryEnabled = true;//enable auto receonnect
-            factory.TopologyRecoveryEnabled = true;//enable auto tolopology recovery
             return factory;
         }
         

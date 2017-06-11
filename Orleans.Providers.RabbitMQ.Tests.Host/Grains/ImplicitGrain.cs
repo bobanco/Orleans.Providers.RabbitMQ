@@ -13,9 +13,11 @@ namespace Orleans.Providers.RabbitMQ.Tests.Host.Grains
 
         public override async Task OnActivateAsync()
         {
+            var grainId = this.GetPrimaryKey();
             var provider = GetStreamProvider("Default");
-            var stream = provider.GetStream<string>(this.GetPrimaryKey(), "TestNamespace");
+            var stream = provider.GetStream<string>(grainId, "TestNamespace");
             _subscription = await stream.SubscribeAsync(this);
+            GetLogger().Info("ImplicitGrainId: {0}", grainId);
         }
 
         public Task OnCompletedAsync()
