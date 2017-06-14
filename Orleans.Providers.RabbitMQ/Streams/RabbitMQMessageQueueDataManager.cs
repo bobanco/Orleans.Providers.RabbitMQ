@@ -45,7 +45,7 @@ namespace Orleans.Providers.RabbitMQ.Streams
             try
             {
                 if(_isClosing)
-                    throw new InvalidOperationException("queue has been closed.");
+                    throw new InvalidOperationException("Queue closing has been requested.");
                 _channel.ExchangeDeclare(_configuration.Exchange, _configuration.ExchangeType, _configuration.ExchangeDurable, _configuration.AutoDelete, null);
                 _channel.QueueDeclare(_configuration.Queue, _configuration.QueueDurable, false, false, null);
                 _channel.QueueBind(_configuration.Queue, _configuration.Exchange, _configuration.RoutingKey, null);
@@ -71,15 +71,15 @@ namespace Orleans.Providers.RabbitMQ.Streams
                 _isClosing = true;
                 if (_channel!= null &&_channel.IsOpen)
                 {
-                    _logger.Info(100000,"Closing RabbitMQ queue channel..");
+                    _logger.Verbose(100000,"Closing RabbitMQ queue channel..");
                     _channel.Close(200, "Good Bye!");
-                    _logger.Info(100000,"RabbitMQ queue channel has been clsoed!");
+                    _logger.Verbose(100000,"RabbitMQ queue channel has been clsoed!");
                 }
                 if (_connection!= null && _connection.IsOpen)
                 {
-                    _logger.Info(100000,"Closing RabbitMQ queue connection");
+                    _logger.Verbose(100000,"Closing RabbitMQ queue connection");
                     _connection.Close(200, "Good Bye!",1000);
-                    _logger.Info(100000,"RabbitMQ queue connection has been closed!");
+                    _logger.Verbose(100000,"RabbitMQ queue connection has been closed!");
                 }
                     
             }
