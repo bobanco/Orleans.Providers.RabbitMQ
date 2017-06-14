@@ -15,6 +15,7 @@ namespace Orleans.Providers.RabbitMQ.Streams
         private IConnection _connection;
         private IModel _channel;
         private readonly IBasicProperties _props;
+        private volatile bool _isClosing = false;
 
         public RabbitMQMessageQueueDataManager(RabbitMQStreamProviderConfiguration configuration, string connectionName,
             Logger logger)
@@ -43,6 +44,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
             var startTime = DateTime.UtcNow;
             try
             {
+                if(_isClosing)
+                    throw new InvalidOperationException("queue has been closed.");
                 _channel.ExchangeDeclare(_configuration.Exchange, _configuration.ExchangeType, _configuration.ExchangeDurable, _configuration.AutoDelete, null);
                 _channel.QueueDeclare(_configuration.Queue, _configuration.QueueDurable, false, false, null);
                 _channel.QueueBind(_configuration.Queue, _configuration.Exchange, _configuration.RoutingKey, null);
@@ -63,7 +66,9 @@ namespace Orleans.Providers.RabbitMQ.Streams
             var startTime = DateTime.UtcNow;
             try
             {
-
+                if(_isClosing)
+                    return Task.CompletedTask;//if we are already closing it, return done task
+                _isClosing = true;
                 if (_channel!= null &&_channel.IsOpen)
                 {
                     _logger.Info(100000,"Closing RabbitMQ queue channel..");
@@ -84,6 +89,7 @@ namespace Orleans.Providers.RabbitMQ.Streams
             }
             finally
             {
+                _isClosing = false;
                 CheckAlertSlowAccess(startTime, "CloseQueueAsync");
             }
             return Task.CompletedTask;
@@ -94,6 +100,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
         /// </summary>
         public Task DeleteQueue()
         {
+            if(!IsConnected)
+                Connect();
             _channel.QueueDelete(_configuration.Queue);
             return TaskDone.Done;
         }
@@ -118,7 +126,9 @@ namespace Orleans.Providers.RabbitMQ.Streams
             {
                 await Task.Run(() =>
                 {
-                    if (!IsConnected())
+                    if (_isClosing)
+                        throw new InvalidOperationException("Unable to add item, Queue close has been requested.");
+                    if (!IsConnected)
                     {
                         Connect();
                     }
@@ -150,7 +160,7 @@ namespace Orleans.Providers.RabbitMQ.Streams
                     var i = count;
                     while (i > 0 || i == -1)
                     {
-                        if (!IsConnected())
+                        if (!IsConnected)
                         {
                             Connect();
                         }
@@ -200,10 +210,12 @@ namespace Orleans.Providers.RabbitMQ.Streams
             }
         }
 
-        private bool IsConnected() => _connection != null && _connection.IsOpen && _channel != null && _channel.IsOpen;
+        private bool IsConnected => _connection != null && _connection.IsOpen && _channel != null && _channel.IsOpen;
 
         private void Connect()
         {
+            if(_isClosing)
+                throw new InvalidOperationException("Queue close has been requested.");
             if (_connection == null || !_connection.IsOpen)
             {
                 _connection?.Dispose();
