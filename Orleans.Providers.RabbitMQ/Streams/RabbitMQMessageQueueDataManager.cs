@@ -64,13 +64,13 @@ namespace Orleans.Providers.RabbitMQ.Streams
             try
             {
 
-                if (_channel.IsOpen)
+                if (_channel!= null &&_channel.IsOpen)
                 {
                     _logger.Info(100000,"Closing RabbitMQ queue channel..");
                     _channel.Close(200, "Good Bye!");
                     _logger.Info(100000,"RabbitMQ queue channel has been clsoed!");
                 }
-                if (_connection.IsOpen)
+                if (_connection!= null && _connection.IsOpen)
                 {
                     _logger.Info(100000,"Closing RabbitMQ queue connection");
                     _connection.Close(200, "Good Bye!",1000);

@@ -35,7 +35,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
             if (dataAdapter == null) throw new ArgumentNullException(nameof(dataAdapter));
             if (serializationManager == null) throw new ArgumentNullException(nameof(serializationManager));
             if(logger == null) throw new ArgumentNullException(nameof(logger));
-            var queue = new RabbitMQMessageQueueDataManager(configuration, $"{providerName}_Consumer", logger);
+            var queue = RabbitMQResourceManager.CreateQueueDataManager(providerName, configuration,
+                $"{providerName}_Consumer", logger);
             return new RabbitMQAdapterReceiver(configuration, providerName, serializationManager, queueId, queue, dataAdapter, logger);
         }
 

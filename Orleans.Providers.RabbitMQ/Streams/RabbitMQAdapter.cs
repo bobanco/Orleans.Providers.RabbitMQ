@@ -44,7 +44,8 @@ namespace Orleans.Providers.RabbitMQ.Streams
             RabbitMQMessageQueueDataManager queue;
             if (!Queues.TryGetValue(queueId, out queue))
             {
-                var tmpQueue = new RabbitMQMessageQueueDataManager(_configuration, $"{Name}_Producer", _logger);
+                var tmpQueue =
+                    RabbitMQResourceManager.CreateQueueDataManager(Name, _configuration, $"{Name}_Producer", _logger);
                 await tmpQueue.InitQueueAsync();
                 queue = Queues.GetOrAdd(queueId, tmpQueue);
             }

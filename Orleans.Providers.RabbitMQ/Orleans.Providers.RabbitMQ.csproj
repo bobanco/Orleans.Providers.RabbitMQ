@@ -152,6 +152,7 @@
     <Compile Include="Streams\RabbitMQMessageQueueDataManager.cs" />
     <Compile Include="Streams\RabbitMQMessage.cs" />
     <Compile Include="Streams\RabbitMQAdapterReceiver.cs" />
+    <Compile Include="Streams\RabbitMQResourceManager.cs" />
     <Compile Include="Streams\RabbitMQStreamProvider.cs" />
     <Compile Include="Streams\RabbitMQStreamProviderConfiguration.cs" />
   </ItemGroup>
